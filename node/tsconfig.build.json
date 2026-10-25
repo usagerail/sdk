@@ -1,0 +1,13 @@
+{
+  // For publishing to npm: compiles src into .js and .d.ts in dist. Tests and examples keep importing the TypeScript sources in src directly
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    // Sources import ./x.ts; the emitted code imports ./x.js
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src"]
+}

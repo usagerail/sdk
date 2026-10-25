@@ -1,0 +1,5 @@
+# Only install versions published at least two weeks ago (in minutes), dependencies of dependencies included
+minimumReleaseAge: 20160
+# @fastify/websocket (used only in tests) needs fastify-plugin@^6; pinned to a version past that two-week mark
+overrides:
+  "@fastify/websocket>fastify-plugin": 6.0.0

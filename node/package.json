@@ -1,0 +1,144 @@
+{
+  "name": "@usagerail/node",
+  "version": "0.1.1",
+  "description": "UsageRail SDK for Node.js: API keys, rate limits, quotas and usage metering inside your API server",
+  "license": "MIT",
+  "homepage": "https://usagerail.com/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usagerail/sdk.git",
+    "directory": "node"
+  },
+  "bugs": "https://github.com/usagerail/sdk/issues",
+  "keywords": [
+    "api-keys",
+    "rate-limiting",
+    "quota",
+    "usage-based-billing",
+    "metering",
+    "express",
+    "hono",
+    "fastify",
+    "nextjs"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./express": "./src/express.ts",
+    "./hono": "./src/hono.ts",
+    "./fastify": "./src/fastify.ts",
+    "./node": "./src/node.ts",
+    "./key-format": "./src/key-format.ts",
+    "./protocol": "./src/protocol.ts",
+    "./next": "./src/next.ts",
+    "./clock": "./src/clock.ts",
+    "./meter": "./src/meter.ts",
+    "./quota": "./src/quota.ts",
+    "./rate-limiter": "./src/rate-limiter.ts",
+    "./routes": "./src/routes.ts",
+    "./transport": "./src/transport.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./express": {
+        "types": "./dist/express.d.ts",
+        "default": "./dist/express.js"
+      },
+      "./hono": {
+        "types": "./dist/hono.d.ts",
+        "default": "./dist/hono.js"
+      },
+      "./fastify": {
+        "types": "./dist/fastify.d.ts",
+        "default": "./dist/fastify.js"
+      },
+      "./node": {
+        "types": "./dist/node.d.ts",
+        "default": "./dist/node.js"
+      },
+      "./key-format": {
+        "types": "./dist/key-format.d.ts",
+        "default": "./dist/key-format.js"
+      },
+      "./protocol": {
+        "types": "./dist/protocol.d.ts",
+        "default": "./dist/protocol.js"
+      },
+      "./next": {
+        "types": "./dist/next.d.ts",
+        "default": "./dist/next.js"
+      },
+      "./clock": {
+        "types": "./dist/clock.d.ts",
+        "default": "./dist/clock.js"
+      },
+      "./meter": {
+        "types": "./dist/meter.d.ts",
+        "default": "./dist/meter.js"
+      },
+      "./quota": {
+        "types": "./dist/quota.d.ts",
+        "default": "./dist/quota.js"
+      },
+      "./rate-limiter": {
+        "types": "./dist/rate-limiter.d.ts",
+        "default": "./dist/rate-limiter.js"
+      },
+      "./routes": {
+        "types": "./dist/routes.d.ts",
+        "default": "./dist/routes.js"
+      },
+      "./transport": {
+        "types": "./dist/transport.d.ts",
+        "default": "./dist/transport.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node scripts/declaration-imports.mjs",
+    "prepack": "pnpm run build",
+    "pack:check": "node scripts/pack-check.mjs",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "bench": "node bench/overhead.ts",
+    "bench:memory": "node --expose-gc bench/memory.ts"
+  },
+  "peerDependencies": {
+    "express": ">=4.18",
+    "fastify": ">=5",
+    "hono": ">=4.8"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@fastify/websocket": "11.3.3",
+    "@types/express": "5.0.6",
+    "@types/node": "22.20.5",
+    "express": "5.2.1",
+    "fastify": "5.12.5",
+    "hono": "4.13.13",
+    "typescript": "5.9.3"
+  }
+}

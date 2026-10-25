@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "usagerail"
+version = "0.1.1"
+description = "UsageRail SDK for Python: API keys, rate limits, quotas and usage metering inside your API server"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+# No third-party runtime dependencies: each adapter imports its framework only when it's used
+dependencies = []
+classifiers = [
+    "Framework :: Django",
+    "Framework :: FastAPI",
+    "Framework :: Flask",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://usagerail.com"
+Documentation = "https://usagerail.com/docs"
+Source = "https://github.com/usagerail/sdk"
+Issues = "https://github.com/usagerail/sdk/issues"
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "mypy==2.4.0",
+    "fastapi==0.142.2",
+    "starlette==1.7.0",
+    # From Starlette 1.2, TestClient uses httpx2; httpx triggers a warning
+    "httpx2==2.13.1",
+    "flask==3.1.3",
+    "werkzeug==3.1.9",
+    "django==6.1.1; python_version >= '3.12'",
+]
+
+[tool.uv]
+# Only install versions released at least two weeks ago, transitive dependencies included
+exclude-newer = "14 days"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/usagerail"]
+
+# Like the Node package, the sdist only carries what installing needs: implementation notes (NOTES.md), tests and benchmarks stay out.
+# hatchling adds pyproject.toml, README and LICENSE on its own
+[tool.hatch.build.targets.sdist]
+include = ["src/usagerail"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src"]
+python_version = "3.10"
+strict = true
+# Django ships without type annotations (they need django-stubs), so only our own code is checked
+[[tool.mypy.overrides]]
+module = ["django.*"]
+ignore_missing_imports = true

@@ -1,0 +1,64 @@
+name: Release
+
+# A tag publishes one SDK: node-v0.1.1 goes to npm, python-v0.1.1 to PyPI.
+# Both registries trust this workflow directly (trusted publishing), so no tokens are stored anywhere.
+
+on:
+  push:
+    tags: ["node-v*", "python-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    if: startsWith(github.ref_name, 'node-v')
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: node
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.6.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later
+      - run: npm install -g npm@11.20.0
+      - name: Tag matches package.json
+        run: test "node-v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm pack:check
+      # pnpm applies publishConfig (compiled entry points); npm publishes that tarball with provenance
+      - run: pnpm pack
+      - run: npm publish usagerail-node-*.tgz --access public
+
+  pypi:
+    if: startsWith(github.ref_name, 'python-v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Tag matches pyproject.toml
+        run: test "python-v$(grep -m1 '^version = ' pyproject.toml | cut -d '"' -f2)" = "$GITHUB_REF_NAME"
+      - run: uv sync --locked
+      - run: uv run --locked mypy
+      - run: uv run --locked pytest
+      - run: uv build
+      - run: uv publish
