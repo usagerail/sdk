@@ -627,6 +627,39 @@ test("serverless: a stale snapshot waits for a sync already on its way, even whe
   await after;
 });
 
+// Cloudflare Workers judges a request hung, and answers it with a 500, when all it waits on belongs to another request: here the sync, and the gate with its timer,
+// were started by the first request. Each waiting request holds a timer of its own until it's decided, and the same goes for afterResponse in waitUntil
+test("serverless: a request waiting on another request's sync or submission holds a timer of its own until the wait ends", async () => {
+  const { key, clock, transport, engine } = serverless();
+  const answer = gate<ReturnType<typeof syncPage>>();
+  const syncResponse = transport.onSync;
+  transport.onSync = () => answer.promise;
+  const first = engine.begin({ method: "GET", path: "/x", apiKey: key });
+  const opened = clock.pending();
+  const second = engine.begin({ method: "GET", path: "/x", apiKey: key });
+  assert.ok(second instanceof Promise);
+  assert.equal(clock.pending(), opened + 1, "the second request sets a timer of its own while it waits on the first request's sync");
+  answer.release(await syncResponse(null));
+  assert.equal((await first).allowed, true);
+  const handle = await finished(second);
+  await settle();
+  assert.equal(clock.pending(), 0, "both timers are cleared once the requests are decided");
+
+  // afterResponse: the second one waits on the first one's submission
+  const ingest = gate<IngestResponse>();
+  transport.onIngest = () => ingest.promise;
+  engine.end(handle, { status: 200, route: "/x" });
+  const afterFirst = engine.afterResponse();
+  await settle();
+  const before = clock.pending();
+  const afterSecond = engine.afterResponse();
+  assert.equal(clock.pending(), before + 1);
+  ingest.release(accepted());
+  await clock.advance(500);
+  await Promise.all([afterFirst, afterSecond]);
+  assert.equal(clock.pending(), 0);
+});
+
 // A self-hosted Next.js on SIGTERM closes its HTTP server first and then waits for after() tasks: by then the SDK's timers are all that's left in the process,
 // and if they were unref'd Node would exit at once, losing batches still waiting for the submission gap
 test("serverless waits keep the process alive until they fire; background timers don't", () => {

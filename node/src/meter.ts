@@ -16,7 +16,7 @@ import type { LeaseReport } from "./quota.ts";
 import { TransportError, describeError, isPausingStatus, type Transport } from "./transport.ts";
 
 // Must match the version in package.json (test/engine.test.ts checks it)
-export const SDK_VERSION = "0.1.1";
+export const SDK_VERSION = "0.1.2";
 export const FLUSH_INTERVAL_MS = 60_000;
 // While the app drains requests during shutdown, report once a second: that uses exactly the ingest limit of 60 batches per instance per minute
 export const DRAIN_FLUSH_INTERVAL_MS = 1_000;

@@ -62,6 +62,11 @@ export class FakeClock implements Clock {
     this.mono = target;
     await settle();
   }
+
+  // Timers set and not yet fired or cancelled
+  pending() {
+    return this.timers.length;
+  }
 }
 
 type Handler<Request, Response> = (request: Request, options?: CallOptions) => Response | Promise<Response>;

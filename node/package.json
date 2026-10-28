@@ -1,6 +1,6 @@
 {
   "name": "@usagerail/node",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "UsageRail SDK for Node.js: API keys, rate limits, quotas and usage metering inside your API server",
   "license": "MIT",
   "homepage": "https://usagerail.com/docs",

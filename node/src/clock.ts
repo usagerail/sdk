@@ -30,3 +30,12 @@ export const waitingClock: Clock = {
     return () => clearTimeout(timer);
   },
 };
+
+// Serverless: hold a timer of the calling request's own while it waits on a promise. On Cloudflare Workers each request has its own I/O context, and a request whose
+// only pending work is a promise driven by another request (the first sync, a remote key check, a submission it rides along with) is judged hung and cancelled
+// with a 500, "your Worker's code had hung and would never generate a response". Its code can still run on after that, so the request was even billed.
+// The timer does nothing when it fires and is cleared as soon as the promise settles; maxMs only bounds how long it can linger, since every wait inside is bounded already
+export function holdOpen<T>(clock: Clock, promise: Promise<T>, maxMs: number): Promise<T> {
+  const cancel = clock.setTimer(() => {}, maxMs);
+  return promise.finally(cancel);
+}

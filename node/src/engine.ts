@@ -5,7 +5,7 @@
 // Internal errors are swallowed with a warning (at most one a minute) and never affect requests; only keys, suspensions, rate limits and quotas reject requests.
 import { createHmac } from "node:crypto";
 
-import { type Clock, systemClock, waitingClock } from "./clock.ts";
+import { type Clock, holdOpen, systemClock, waitingClock } from "./clock.ts";
 import { KeyStore, SNAPSHOT_MAX_AGE_MS, type KeyCheck, type SnapshotStore, type SyncSnapshot } from "./key-store.ts";
 import { ANONYMOUS_CONSUMER, Meter, UNMATCHED_ROUTE, classifyStatus } from "./meter.ts";
 import {
@@ -35,6 +35,10 @@ export const FIRST_SYNC_WAIT_MS = 1_000;
 export const SERVERLESS_STALE_MS = 20_000;
 // Serverless: at least 0.5 seconds between two submissions from one instance, no more than 120 batches a minute
 export const SERVERLESS_SUBMIT_GAP_MS = 500;
+// Serverless: the longest the start of a request can wait (the first sync 1 s, a remote key check 0.3 s, a lease 0.3 s), with room to spare,
+// and the longest Workers runs waitUntil after a response. Bounds for holdOpen in clock.ts
+const SERVERLESS_BEGIN_HOLD_MS = 5_000;
+const SERVERLESS_AFTER_RESPONSE_HOLD_MS = 30_000;
 // How far back a reported minute can be: the server only accepts the last 24 hours, so leave an hour of margin (same as at in lease requests)
 const MAX_ROW_AGE_MS = 23 * 60 * 60_000;
 // Serverless: minimum wait before retrying a failed sync; the server allows at most 6 syncs per instance per minute. Configuration errors (like a revoked app key) wait 10 minutes
@@ -339,12 +343,12 @@ class UsageRailEngine<Context> implements Engine<Context> {
     } catch (error) {
       identity = this.identifyFailed(error);
     }
-    if (identity instanceof Promise) {
-      return identity
-        .catch((error: unknown) => this.identifyFailed(error))
-        .then((resolved) => this.decide(request, resolved, startedAt));
-    }
-    return this.decide(request, identity, startedAt);
+    const decision =
+      identity instanceof Promise
+        ? identity.catch((error: unknown) => this.identifyFailed(error)).then((resolved) => this.decide(request, resolved, startedAt))
+        : this.decide(request, identity, startedAt);
+    // Serverless: while this request waits, it holds a timer of its own (clock.ts holdOpen); what it waits on may belong to a concurrent request
+    return this.options.serverless && decision instanceof Promise ? holdOpen(this.clock, decision, SERVERLESS_BEGIN_HOLD_MS) : decision;
   }
 
   private identify(request: BeginRequest<Context>): Identity | Promise<Identity> {
@@ -873,10 +877,12 @@ class UsageRailEngine<Context> implements Engine<Context> {
     // Renewals also wait for the sync: a sync that finds a new quota version retires old leases and queues renewals; renewing first would make the next request get them synchronously
     const renew = syncing ? syncing.then(() => this.quota.renewNow()) : this.quota.renewNow();
     const tasks: Promise<unknown>[] = [renew, submit];
-    return Promise.all(tasks).then(
+    const done = Promise.all(tasks).then(
       () => undefined,
       (error: unknown) => this.warn(`UsageRail: ${describeError(error)}`),
     );
+    // The sync and the submission are often another request's; without a timer of its own, Workers would judge this waitUntil hung (clock.ts holdOpen)
+    return holdOpen(this.clock, done, SERVERLESS_AFTER_RESPONSE_HOLD_MS);
   }
 
   // At least 0.5 seconds between submissions. If one is queued but not started, ride along with it (it builds its batch when it starts).
