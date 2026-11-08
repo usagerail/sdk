@@ -9,6 +9,8 @@ Source for the UsageRail SDKs. They check API keys, apply rate limits and quotas
 
 Setup guides and the API reference are at [usagerail.com/docs](https://usagerail.com/docs).
 
+If you use a coding agent, [skills/add-usagerail/SKILL.md](skills/add-usagerail/SKILL.md) is an agent skill that walks it through adding the SDK to an existing API.
+
 ## Issues and pull requests
 
 Both are welcome here. The SDKs are developed in UsageRail's main codebase, next to the service they talk to, and this repository is published from there. An accepted pull request is applied upstream and comes back here with the next sync, credited to you.
