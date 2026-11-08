@@ -133,7 +133,8 @@ Update the API's own docs and client error handling for these.
 - Rate limits are counted per server instance by default.
 - The Express middleware and the Python SDK don't check or count WebSocket connections. Hono counts a successful handshake once, and so does Fastify with `@fastify/websocket`.
 - Counts are sent every 60 seconds. A process killed with `kill -9` or by running out of memory loses the counts it hadn't sent, and they're never billed.
-- In Node.js, the SDK sends the remaining counts on SIGTERM and when the process exits on its own (Hono only with `flushOnExit`). SIGINT (Ctrl+C) and a direct `process.exit()` skip that, so an app that stops another way should `await engine.close()` before it exits.
+- With Express and Fastify, and Hono with `flushOnExit`, the SDK sends the remaining counts on SIGTERM and when the process exits on its own. SIGINT (Ctrl+C) and a direct `process.exit()` skip that, so an app that stops another way should `await engine.close()` before it exits.
+- Next.js has no background timer or exit hook: pass `waitUntil: after` from `next/server` (or `waitUntil` from `@vercel/functions`) so the counts go out after each response. See https://usagerail.com/docs/nextjs.
 - In Python, FastAPI sends them during lifespan shutdown, and Flask and Django when the process exits normally, as under gunicorn. Django under uvicorn or another ASGI server needs the `asgi.py` wrapper above.
 - To charge customers, the user connects their own Stripe account. Money goes straight there, and UsageRail is not a merchant of record.
 
