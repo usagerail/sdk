@@ -1,7 +1,8 @@
 ---
 name: add-usagerail
 description: Add API keys, per-customer rate limits, quotas and usage metering to a Node.js or Python API server with the UsageRail SDK. Use when someone wants to sell access to their API, charge by usage through their own Stripe account, or keep one customer from using up their API.
-tags: [api, api-keys, rate-limiting, usage-billing, stripe, fastapi, express, django, flask, hono]
+metadata:
+  tags: "api, api-keys, rate-limiting, usage-billing, stripe, fastapi, express, django, flask, hono"
 ---
 
 # Add UsageRail to an API
