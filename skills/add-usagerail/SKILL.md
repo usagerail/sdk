@@ -20,7 +20,7 @@ UsageRail's SDK checks API keys, applies rate limits and quotas, and counts usag
 
 Every request counts as 1 by default. The `track()` calls below only change that once the app counts units, which is set in the console under Settings > What counts as usage. While the app counts requests, `track()` does nothing.
 
-When the app counts units, each request reserves units from the customer's quota before the handler runs, and a route reserves 1 unless it has a "Reserve with track()" value under Settings > Route weights. So on a plan that stops at the limit, a customer with 5 units left can still start a request that uses 1,000 tokens and go over by the difference. For every route that calls `track()`, set Reserve with track() to the most units one request on that route can use. Then give a test key a plan with only a few units left, send several requests at once, and check that they get a 429 instead of going over.
+When the app counts units, each request reserves units from the customer's quota before the handler runs. A route listed under Settings > Route weights reserves the larger of its weight and its "Reserve with track()" value; any other route reserves 1. So if a route that counts tokens isn't listed, a customer on a plan that stops at the limit, with 5 units left, can still start a request that uses 1,000 tokens and go over by the difference. For every route that calls `track()`, set Reserve with track() to the most units one request on that route can use. Then give a test key a plan with only a few units left, send several requests at once, and check that they get a 429 instead of going over.
 
 ### FastAPI or Starlette
 
@@ -51,13 +51,21 @@ To leave health checks and webhooks open, wrap the middleware so those exact pat
 OPEN_PATHS = {"/healthz", "/webhooks/stripe"}
 
 
+def route_path(scope):
+    # The path the router matches: like Starlette, drop the server's root_path (set behind a proxy prefix) first
+    path, root = scope["path"], scope.get("root_path", "")
+    if root and path.startswith(root) and path[len(root):][:1] in ("", "/"):
+        return path[len(root):]
+    return path
+
+
 class UsageRailExceptOpenPaths:
     def __init__(self, app, **options):
         self.open_app = app
         self.rail = UsageRailMiddleware(app, **options)
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["path"] in OPEN_PATHS:
+        if scope["type"] == "http" and route_path(scope) in OPEN_PATHS:
             await self.open_app(scope, receive, send)
         else:
             # Everything else, lifespan included, goes through UsageRail, so shutdown still sends the counts
