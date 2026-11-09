@@ -7,13 +7,14 @@ metadata:
 
 # Add UsageRail to an API
 
-UsageRail's SDK checks API keys, applies rate limits and quotas, and counts usage per customer inside the user's own API server. Requests never pass through UsageRail. Counts go to UsageRail in the background every 60 seconds.
+UsageRail's SDK checks API keys, applies rate limits and quotas, and counts usage per customer inside the user's own API server. Requests never pass through UsageRail. Counts go to UsageRail in the background: every 60 seconds on a long-running server, and after each response in Next.js.
 
 ## Before you change anything
 
 1. Find the framework. The SDKs cover Express, Hono, Fastify and Next.js on Node.js 22+, and FastAPI, Starlette, Flask and Django on Python 3.10+. For other languages, use the HTTP check endpoint described at https://usagerail.com/docs. It adds one network call per request.
 2. Ask how callers authenticate today. With no keys yet, use `auth: "api-key"` and UsageRail issues the keys. With existing keys or logins, use `auth: "custom"` with a `consumer` function. In Node.js it returns `{ id }` for the caller, or `null` for anonymous traffic. In Python it returns the customer's ID as a string, or `None`. A bare string returned in Node.js is counted as anonymous. Return an identity the app's own code has verified, never a value the caller can set, such as a plain header. UsageRail has to run after that authentication: in Express, `app.use(usageRail(...))` goes after the auth middleware. In FastAPI the identity must come from an authentication middleware, not `Depends(...)`, and since FastAPI runs the middleware added last first, add the auth middleware after the line that adds UsageRail. In Django, list UsageRail after `AuthenticationMiddleware`. Django REST framework token or JWT authentication runs inside the view, after all middleware, so a consumer that reads `request.user` sees anonymous traffic: verify the token in the consumer function or in an earlier middleware. In Flask, register the app's own `before_request` hook first.
-3. The user needs an app key from https://app.usagerail.com. Read it from the `USAGERAIL_APP_KEY` environment variable. Never write the key into source code, and never ask the user to paste it into the chat.
+3. List the routes that must answer without a UsageRail key, such as health checks, webhook receivers and browsers' CORS preflight (`OPTIONS`) requests. With `auth: "api-key"`, any request UsageRail sees without a valid key gets a 401. In Express, mount it on the paid API's path, `app.use("/v1", usageRail(...))`, and register the CORS middleware before it. In FastAPI, add `CORSMiddleware` after the line that adds UsageRail, so it runs first. To leave other FastAPI routes open, add UsageRail to a sub-application and mount that with `app.mount("/v1", api)`. In Django, list the CORS middleware above UsageRail. Where the framework can't leave a route out, as with Flask and Django, tell the user which routes will start asking for a key. Once it's wired in, call each of those routes without a key and check that it still answers.
+4. The user needs an app key from https://app.usagerail.com. Read it from the `USAGERAIL_APP_KEY` environment variable. Never write the key into source code, and never ask the user to paste it into the chat.
 
 ## Wire it in
 
@@ -130,9 +131,10 @@ Update the API's own docs and client error handling for these.
 
 ## Tell the user before they deploy
 
+- Rate limits and quotas come from plans, set up in the console. Until the user makes a free plan the default (Make default) or moves customers onto a plan, customers have no rate limit or quota. Once that's done, go over a limit with a test key and check for the 429.
 - Rate limits are counted per server instance by default.
 - The Express middleware and the Python SDK don't check or count WebSocket connections. Hono counts a successful handshake once, and so does Fastify with `@fastify/websocket`.
-- Counts are sent every 60 seconds. A process killed with `kill -9` or by running out of memory loses the counts it hadn't sent, and they're never billed.
+- On a long-running server, counts are sent every 60 seconds. A process killed with `kill -9` or by running out of memory loses the counts it hadn't sent, and they're never billed.
 - With Express and Fastify, and Hono with `flushOnExit`, the SDK sends the remaining counts on SIGTERM and when the process exits on its own. SIGINT (Ctrl+C) and a direct `process.exit()` skip that, so an app that stops another way should `await engine.close()` before it exits.
 - Next.js has no background timer or exit hook: pass `waitUntil: after` from `next/server` (or `waitUntil` from `@vercel/functions`) so the counts go out after each response. See https://usagerail.com/docs/nextjs.
 - In Python, FastAPI sends them during lifespan shutdown, and Flask and Django when the process exits normally, as under gunicorn. Django under uvicorn or another ASGI server needs the `asgi.py` wrapper above.
