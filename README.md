@@ -7,7 +7,7 @@ Source for the UsageRail SDKs. They check API keys, apply rate limits and quotas
 | Node.js 22+ | `npm install @usagerail/node` | Express, Hono, Fastify, Next.js | [node/](node) |
 | Python 3.10+ | `pip install usagerail` | FastAPI, Starlette, Flask, Django | [python/](python) |
 
-Setup guides and the API reference are at [usagerail.com/docs](https://usagerail.com/docs).
+Setup guides and the API reference are at [usagerail.com/docs](https://usagerail.com/docs). To try the HTTP API before writing any code, there's a [UsageRail collection in a public Postman workspace](https://www.postman.com/usagerail-1505643/usagerail-api). The Node.js SDK is also published on [JSR as @usagerail/node](https://jsr.io/@usagerail/node).
 
 If you use a coding agent, [skills/add-usagerail/SKILL.md](skills/add-usagerail/SKILL.md) is an agent skill that walks it through adding the SDK to an existing API.
 
