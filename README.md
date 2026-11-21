@@ -19,6 +19,13 @@ Both are welcome here. The SDKs are developed in UsageRail's main codebase, next
 
 From 0.1.1 on, every version on npm and PyPI is built and published by the [release workflow](.github/workflows/release.yml) from a tag in this repository (`node-v0.1.1`, `python-v0.1.1`). npm shows the commit each of those versions was built from.
 
+## Elsewhere
+
+- SDK docs on [Read the Docs](https://usagerail-sdk.readthedocs.io/en/latest/) and the HTTP API reference on [Apidog](https://usagerail.apidog.io/).
+- UsageRail's HTTP endpoints and authentication on [integrations.sh](https://integrations.sh/usagerail.com/).
+- The SDK project on [SourceForge](https://sourceforge.net/projects/usagerail-sdk/).
+- UsageRail on [DevHunt](https://devhunt.org/tool/usagerail).
+
 ## License
 
 MIT
