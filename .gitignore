@@ -5,3 +5,9 @@ dist/
 __pycache__/
 .pytest_cache/
 .mypy_cache/
+
+# Copied in when the docs are built (.readthedocs.yaml)
+docs/node.md
+docs/python.md
+docs/agent-skill.md
+site/

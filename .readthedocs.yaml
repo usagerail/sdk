@@ -1,0 +1,21 @@
+# Read the Docs build for the SDK docs (mkdocs.yml)
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"
+  jobs:
+    # The SDK pages are the READMEs and the agent skill themselves, copied in so there is one copy to keep up to date
+    pre_build:
+      - cp node/README.md docs/node.md
+      - cp python/README.md docs/python.md
+      - cp skills/add-usagerail/SKILL.md docs/agent-skill.md
+
+mkdocs:
+  configuration: mkdocs.yml
+  fail_on_warning: true
+
+python:
+  install:
+    - requirements: docs/requirements.txt
