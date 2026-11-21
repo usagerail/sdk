@@ -1,0 +1,21 @@
+# SDK docs on Read the Docs. node.md, python.md and agent-skill.md are copied from the SDK READMEs and the agent
+# skill at build time (see .readthedocs.yaml), so the READMEs stay the only copy. To build locally, run the same cp
+# commands, then: pip install -r docs/requirements.txt && mkdocs build --strict
+site_name: UsageRail SDKs
+site_description: Node.js and Python SDKs that check API keys, apply rate limits and quotas, and meter usage inside your API server.
+# Read the Docs sets the canonical URL of the version being built (with /en/latest/); the fallback is for local builds
+site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://usagerail-sdk.readthedocs.io/en/latest/"]
+copyright: MIT licensed
+theme:
+  name: readthedocs
+  custom_dir: docs-theme
+nav:
+  - Overview: index.md
+  - Node.js: node.md
+  - Python: python.md
+  - Coding agent skill: agent-skill.md
+markdown_extensions:
+  # For rel=nofollow on the outbound source link in index.md
+  - attr_list
+exclude_docs: |
+  requirements.txt
