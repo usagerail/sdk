@@ -116,10 +116,10 @@ def _rejection(buckets: list[_Bucket | None]) -> RateDecision:
 
 
 def rate_limit_headers(policies: list[RateLimitPolicy], retry_after_seconds: int) -> dict[str, str]:
-    """Headers for a 429: Retry-After plus the two fields from draft-ietf-httpapi-ratelimit-headers, version 11.
+    """Headers for a 429: Retry-After plus the RateLimit-Policy and RateLimit fields from draft-ietf-httpapi-ratelimit-headers, version 12.
     Token buckets are expressed the same way as in the usagerail.com rate limiting guide: q is the bucket capacity, w is seconds from empty to full"""
     return {
         "Retry-After": str(retry_after_seconds),
         "RateLimit-Policy": ", ".join(f'"{policy.name}";q={policy.quota};w={policy.window_seconds}' for policy in policies),
-        "RateLimit": ", ".join(f'"{policy.name}";r={policy.remaining};t={policy.reset_seconds}' for policy in policies),
+        "RateLimit": ", ".join(f'"{policy.name}";a={policy.remaining};w={policy.reset_seconds}' for policy in policies),
     }

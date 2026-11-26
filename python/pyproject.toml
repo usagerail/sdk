@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "usagerail"
-version = "0.1.1"
+version = "0.2.0"
 description = "UsageRail SDK for Python: API keys, rate limits, quotas and usage metering inside your API server"
 readme = "README.md"
 license = "MIT"

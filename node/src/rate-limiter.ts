@@ -98,12 +98,12 @@ function rejection(buckets: (Bucket | null)[]): RateDecision {
 
 export type RateLimitPolicy = { name: string; quota: number; windowSeconds: number; remaining: number; resetSeconds: number };
 
-// Headers for a 429: Retry-After plus the two fields from draft-ietf-httpapi-ratelimit-headers, version 11.
+// Headers for a 429: Retry-After plus the RateLimit-Policy and RateLimit fields from draft-ietf-httpapi-ratelimit-headers, version 12.
 // If the draft changes again, only this function changes. Token buckets are expressed the same way as in the usagerail.com rate limiting guide: q is the bucket capacity, w is seconds from empty to full
 export function rateLimitHeaders(policies: RateLimitPolicy[], retryAfterSeconds: number): Record<string, string> {
   return {
     "Retry-After": String(retryAfterSeconds),
     "RateLimit-Policy": policies.map((policy) => `"${policy.name}";q=${policy.quota};w=${policy.windowSeconds}`).join(", "),
-    RateLimit: policies.map((policy) => `"${policy.name}";r=${policy.remaining};t=${policy.resetSeconds}`).join(", "),
+    RateLimit: policies.map((policy) => `"${policy.name}";a=${policy.remaining};w=${policy.resetSeconds}`).join(", "),
   };
 }

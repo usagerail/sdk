@@ -30,7 +30,7 @@ def test_both_windows_must_have_a_token_and_the_headers_describe_both():
     assert denied.headers == {
         "Retry-After": "20",
         "RateLimit-Policy": '"per_second";q=10;w=1, "per_minute";q=3;w=60',
-        "RateLimit": '"per_second";r=7;t=1, "per_minute";r=0;t=20',
+        "RateLimit": '"per_second";a=7;w=1, "per_minute";a=0;w=20',
     }
 
 

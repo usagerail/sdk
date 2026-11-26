@@ -20,7 +20,7 @@ test("a per-second bucket allows the limit, then refills over the second", () =>
   assert.equal(limiter.check("cons_2", limits, "per_instance", 1).allowed, true);
 });
 
-test("both windows must have a token; Retry-After and the draft-11 headers describe both", () => {
+test("both windows must have a token; Retry-After and the draft-12 headers describe both", () => {
   const clock = new FakeClock();
   const limiter = new RateLimiter(clock);
   const limits = { per_second: 10, per_minute: 3 };
@@ -33,7 +33,7 @@ test("both windows must have a token; Retry-After and the draft-11 headers descr
   assert.deepEqual(denied.headers, {
     "Retry-After": "20",
     "RateLimit-Policy": '"per_second";q=10;w=1, "per_minute";q=3;w=60',
-    RateLimit: '"per_second";r=7;t=1, "per_minute";r=0;t=20',
+    RateLimit: '"per_second";a=7;w=1, "per_minute";a=0;w=20',
   });
 });
 
