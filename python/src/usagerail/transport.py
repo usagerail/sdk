@@ -29,7 +29,7 @@ DEFAULT_BASE_URL = "https://api.usagerail.com"
 # Key verification and lease requests hold up the caller's request, so they are capped at 300 ms. Sync and ingest run in the background and get plenty of time
 DEFAULT_TIMEOUTS = {"verify_key": 300, "leases": 300, "sync": 10_000, "ingest": 10_000}
 
-SDK_VERSION = "0.2.0"
+SDK_VERSION = "0.3.0"
 USER_AGENT = f"usagerail-python/{SDK_VERSION}"
 
 

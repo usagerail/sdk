@@ -90,11 +90,15 @@ def _refill(bucket: _Bucket | None, capacity: int, window_seconds: int, now: flo
 
 @dataclass(frozen=True, slots=True)
 class RateLimitPolicy:
+    """retry_after_seconds and effective_window_seconds are set only for a bucket with no whole token left (None otherwise):
+    the wait for its next token rounded up, and rounded down (None under a second)"""
+
     name: str
     quota: int
     window_seconds: int
     remaining: int
-    reset_seconds: int
+    retry_after_seconds: int | None
+    effective_window_seconds: int | None
 
 
 def _rejection(buckets: list[_Bucket | None]) -> RateDecision:
@@ -104,22 +108,38 @@ def _rejection(buckets: list[_Bucket | None]) -> RateDecision:
         bucket = buckets[index]
         if bucket is None:
             continue
-        exhausted = bucket.tokens < 1
-        # A bucket that blocked: time until it has 1 token, rounded up (waiting a little longer never earns another 429). A bucket that didn't: time until it's full
-        if exhausted:
-            reset = math.ceil(((1 - bucket.tokens) * seconds) / bucket.capacity)
-            retry_after = max(retry_after, reset)
-        else:
-            reset = math.ceil(((bucket.capacity - bucket.tokens) * seconds) / bucket.capacity)
-        policies.append(RateLimitPolicy(name, bucket.capacity, seconds, math.floor(bucket.tokens), reset))
+        remaining = math.floor(bucket.tokens)
+        if remaining >= 1:
+            policies.append(RateLimitPolicy(name, bucket.capacity, seconds, remaining, None, None))
+            continue
+        next_token = ((1 - bucket.tokens) * seconds) / bucket.capacity
+        # Rounded up for Retry-After: retrying a little late never earns another 429.
+        # Rounded down for w: until then the client can't use a token, which is what the draft's w promises (section 3.1.2).
+        # Under a second rounds down to 0, a window that promises nothing, so w is left out
+        wait = math.ceil(next_token)
+        effective_window = math.floor(next_token)
+        # The request succeeds once every empty bucket has a token again, so Retry-After is the longest of their waits
+        retry_after = max(retry_after, wait)
+        policies.append(
+            RateLimitPolicy(name, bucket.capacity, seconds, remaining, wait, effective_window if effective_window > 0 else None)
+        )
     return RateDecision(False, retry_after, rate_limit_headers(policies, retry_after))
 
 
 def rate_limit_headers(policies: list[RateLimitPolicy], retry_after_seconds: int) -> dict[str, str]:
     """Headers for a 429: Retry-After plus the RateLimit-Policy and RateLimit fields from draft-ietf-httpapi-ratelimit-headers, version 12.
-    Token buckets are expressed the same way as in the usagerail.com rate limiting guide: q is the bucket capacity, w is seconds from empty to full"""
+    Token buckets are expressed the same way as in the usagerail.com rate limiting guide: q is the bucket capacity and the policy's w
+    is seconds from empty to full. Same as rateLimitHeaders in the Node SDK.
+
+    In RateLimit, w is the effective window (draft section 3.1.2), and only empty buckets carry it. Draft section 5 says Retry-After
+    shouldn't end before an effective window it's sent with. A bucket that still has tokens can be further from its next token than
+    Retry-After; an empty bucket's window ends no later than Retry-After, the longest of their waits"""
     return {
         "Retry-After": str(retry_after_seconds),
         "RateLimit-Policy": ", ".join(f'"{policy.name}";q={policy.quota};w={policy.window_seconds}' for policy in policies),
-        "RateLimit": ", ".join(f'"{policy.name}";a={policy.remaining};w={policy.reset_seconds}' for policy in policies),
+        "RateLimit": ", ".join(
+            f'"{policy.name}";a={policy.remaining}'
+            + ("" if policy.effective_window_seconds is None else f";w={policy.effective_window_seconds}")
+            for policy in policies
+        ),
     }

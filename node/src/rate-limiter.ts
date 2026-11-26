@@ -85,25 +85,54 @@ function rejection(buckets: (Bucket | null)[]): RateDecision {
     const bucket = buckets[index];
     if (!bucket) continue;
     const { name, seconds } = WINDOWS[index];
-    const exhausted = bucket.tokens < 1;
-    // A bucket that blocked: time until it has 1 token, rounded up (waiting a little longer never earns another 429). A bucket that didn't: time until it's full
-    const resetSeconds = exhausted
-      ? Math.ceil(((1 - bucket.tokens) * seconds) / bucket.capacity)
-      : Math.ceil(((bucket.capacity - bucket.tokens) * seconds) / bucket.capacity);
-    if (exhausted) retryAfterSeconds = Math.max(retryAfterSeconds, resetSeconds);
-    policies.push({ name, quota: bucket.capacity, windowSeconds: seconds, remaining: Math.floor(bucket.tokens), resetSeconds });
+    const remaining = Math.floor(bucket.tokens);
+    if (remaining >= 1) {
+      policies.push({ name, quota: bucket.capacity, windowSeconds: seconds, remaining, retryAfterSeconds: null, effectiveWindowSeconds: null });
+      continue;
+    }
+    const nextToken = ((1 - bucket.tokens) * seconds) / bucket.capacity;
+    // Rounded up for Retry-After: retrying a little late never earns another 429.
+    // Rounded down for w: until then the client can't use a token, which is what the draft's w promises (section 3.1.2).
+    // Under a second rounds down to 0, a window that promises nothing, so w is left out
+    const waitSeconds = Math.ceil(nextToken);
+    const effectiveWindowSeconds = Math.floor(nextToken);
+    // The request succeeds once every empty bucket has a token again, so Retry-After is the longest of their waits
+    retryAfterSeconds = Math.max(retryAfterSeconds, waitSeconds);
+    policies.push({
+      name,
+      quota: bucket.capacity,
+      windowSeconds: seconds,
+      remaining,
+      retryAfterSeconds: waitSeconds,
+      effectiveWindowSeconds: effectiveWindowSeconds > 0 ? effectiveWindowSeconds : null,
+    });
   }
   return { allowed: false, retryAfterSeconds, headers: rateLimitHeaders(policies, retryAfterSeconds), policies };
 }
 
-export type RateLimitPolicy = { name: string; quota: number; windowSeconds: number; remaining: number; resetSeconds: number };
+// retryAfterSeconds and effectiveWindowSeconds are set only for a bucket with no whole token left (null otherwise):
+// the wait for its next token rounded up, and rounded down (null under a second)
+export type RateLimitPolicy = {
+  name: string;
+  quota: number;
+  windowSeconds: number;
+  remaining: number;
+  retryAfterSeconds: number | null;
+  effectiveWindowSeconds: number | null;
+};
 
 // Headers for a 429: Retry-After plus the RateLimit-Policy and RateLimit fields from draft-ietf-httpapi-ratelimit-headers, version 12.
-// If the draft changes again, only this function changes. Token buckets are expressed the same way as in the usagerail.com rate limiting guide: q is the bucket capacity, w is seconds from empty to full
+// Token buckets are expressed the same way as in the usagerail.com
+// rate limiting guide: q is the bucket capacity and the policy's w is seconds from empty to full.
+// In RateLimit, w is the effective window (draft section 3.1.2), and only empty buckets carry it. Draft section 5 says
+// Retry-After shouldn't end before an effective window it's sent with. A bucket that still has tokens can be further from
+// its next token than Retry-After; an empty bucket's window ends no later than Retry-After, the longest of their waits
 export function rateLimitHeaders(policies: RateLimitPolicy[], retryAfterSeconds: number): Record<string, string> {
   return {
     "Retry-After": String(retryAfterSeconds),
     "RateLimit-Policy": policies.map((policy) => `"${policy.name}";q=${policy.quota};w=${policy.windowSeconds}`).join(", "),
-    RateLimit: policies.map((policy) => `"${policy.name}";a=${policy.remaining};w=${policy.resetSeconds}`).join(", "),
+    RateLimit: policies
+      .map((policy) => `"${policy.name}";a=${policy.remaining}` + (policy.effectiveWindowSeconds == null ? "" : `;w=${policy.effectiveWindowSeconds}`))
+      .join(", "),
   };
 }
